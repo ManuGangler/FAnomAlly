@@ -1,0 +1,699 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
+# In[1]
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+pdf = pd.read_parquet('../ftransfer_ztf_2024-02-01_689626')
+# In[2]
+
+Id = pdf['objectId'][4771]
+
+#id_plus_repete = pdf['objectId'].value_counts().idxmax()
+
+# here opting for the most frequently occurring alert.
+#pdf_selectionne = pdf.loc[pdf['objectId'] == id_plus_repete]
+pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+
+list_Ids = [pdf_selectionne]
+#list_Ids.append(pdf_selectionne)
+
+top_15 = pdf['objectId'].value_counts().head(1).index.tolist()
+
+for i in top_15:
+    list_Ids.append(pdf.loc[pdf['objectId'] == i])
+
+
+def function_FN(pdf_selectionne):
+    
+    candidate_df = pdf_selectionne['candidate'].apply(pd.Series)
+
+
+
+    candidate_df = pdf_selectionne['candidate'].apply(pd.Series)
+
+    # index of the candidate with the biggest 'jd'
+    index_max_jd = candidate_df['jd'].idxmax()
+
+    # select this candidate
+    pdf_selectionne = pdf_selectionne.loc[index_max_jd]
+
+
+    pdf_selectionne_cand = pdf_selectionne['prv_candidates'] 
+
+
+
+    #  add 'candidate' the actual value 
+    keys = pdf_selectionne_cand[0].keys()
+    actual_cand = {key: pdf_selectionne['candidate'][key] for key in keys if key in pdf_selectionne['candidate']}
+
+
+
+    liste_dicts = list(pdf_selectionne_cand)
+    liste_dicts.append(actual_cand)
+    df = pd.DataFrame(liste_dicts)
+
+
+# #
+
+# # 3) plot Difference Magnitude in Modified Julian Date [UTC]
+
+    """
+mjd = df['jd'].apply(lambda x: x - 2400000.5)
+
+fig = plt.figure(figsize=(25, 15))
+
+colordic = {1: 'C0', 2: 'C1'}
+filtdic = {1: 'g', 2: 'r'}
+
+# valid values 
+maskValid = (df['rb'] > 0.55) & (df['nbad'] == 0)
+# Upper limit values
+maskUpper = pd.isna(df['magpsf'])
+#bad quality values 
+maskBadquality = ~maskValid & ~maskUpper
+
+
+for filt in np.unique(df['fid']):
+    maskFilt = df['fid'] == filt
+
+    plt.errorbar(
+        df[maskValid & maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df[maskValid & maskFilt]['magpsf'],
+        df[maskValid & maskFilt]['sigmapsf'],
+        ls = '', marker='o', color=colordic[filt], label='{} band'.format(filtdic[filt])
+    )
+
+    plt.plot(
+        df[maskUpper & maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df[maskUpper & maskFilt]['diffmaglim'],
+        ls='', marker='v', color=colordic[filt], markerfacecolor='none'
+    )
+    
+
+    plt.errorbar(
+        df[maskBadquality & maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df[maskBadquality & maskFilt]['magpsf'],
+        df[maskBadquality & maskFilt]['sigmapsf'],
+        ls='', marker='^', color=colordic[filt]
+    )
+
+plt.ylim(12, 22)
+plt.gca().invert_yaxis()
+plt.legend()
+plt.title('Difference image PSF-fit magnitude')
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Difference Magnitude');
+    """
+
+# # Plot the magnitude difference for valid data.
+
+    """
+fig = plt.figure(figsize=(15, 5))
+
+colordic = {1: 'C0', 2: 'C1'}
+filtdic = {1: 'g', 2: 'r'}
+    
+maskValid = (df['rb'] > 0.55) & (df['nbad'] == 0)
+
+    
+#t or 1 => candidate is from positive (sci minus ref) subtraction;
+#f or 0 => candidate is from negative (ref minus sci) subtraction"
+maskpos = (df['isdiffpos'] == 't') | (df['isdiffpos'] == 1)
+maskneg = (df['isdiffpos'] == 'f') | (df['isdiffpos'] == 0)
+
+for filt in np.unique(df['fid']):
+    maskFilt = df['fid'] == filt
+
+    # candidates from negative 
+
+    plt.errorbar(
+        df[maskValid & maskFilt & maskneg ]['jd'].apply(lambda x: x - 2400000.5),
+        df[maskValid & maskFilt & maskneg ]['magpsf'],
+        df[maskValid & maskFilt & maskneg ]['sigmapsf'],
+        ls = '', marker='^', color=colordic[filt], label='{} (-)'.format(filtdic[filt])
+    )
+    
+    # candidates from positive 
+    plt.errorbar(
+        df[maskValid & maskFilt &  maskpos ]['jd'].apply(lambda x: x - 2400000.5),
+        df[maskValid & maskFilt &  maskpos ]['magpsf'],
+        df[maskValid & maskFilt &  maskpos ]['sigmapsf'],
+        ls = '', marker='o', color=colordic[filt], label='{} (+)'.format(filtdic[filt])
+    )
+    
+
+#plt.ylim(12, 22)
+plt.gca().invert_yaxis()
+plt.legend()
+plt.title('Difference image PSF-fit magnitude')
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Difference Magnitude');
+
+    """
+
+# # 
+
+# # 
+
+# # 4) Verify whether there is a source behind the object.
+
+# If so, we compute the magnitude DC using the `dc_mag` function.
+
+#  And we extract a subset of validated data into a dataframe for further analysis
+
+
+# from fink_science.conversion import dc_mag
+    from fink_utils.photometry.conversion import dc_mag
+    from fink_utils.photometry.utils import is_source_behind
+
+# Take only valid measurements
+    maskValid = (df['rb'] > 0.55) & (df['nbad'] == 0)
+    df_valid = df[maskValid].sort_values('jd')
+
+    isSource = is_source_behind(
+    df_valid['distnr'].values[0]
+    )
+
+    if isSource:
+      print('It looks like there is a source behind. Lets compute the DC magnitude instead.')
+    
+    # Use DC magnitude instead of difference mag
+      mag_dc, err_dc = np.transpose(
+        [
+            dc_mag(*args) for args in zip(
+                df_valid['magpsf'].astype(float).values,
+                df_valid['sigmapsf'].astype(float).values,
+                df_valid['magnr'].astype(float).values,
+                df_valid['sigmagnr'].astype(float).values,
+                df_valid['isdiffpos'].values
+            )
+        ]
+    )
+    
+      df_valid['mag_dc'] = mag_dc
+      df_valid['err_dc'] = err_dc
+    else:
+      print('No source found -- keeping PSF fit magnitude')
+      df_valid['mag_dc'] = df_valid['magpsf']
+      df_valid['err_dc'] = df_valid['sigmapsf']
+
+
+
+# ### Next, we plot the comparison between PSF-fit magnitudes and DC magnitudes.
+
+# We calculate the reference value as the average magnitude of the nearest source in the reference image PSF catalog.
+    """
+fig = plt.figure(figsize=(15, 5))
+
+colordic = {1: 'C0', 2: 'C1'}
+filtdic = {1: 'g', 2: 'r'}
+
+for filt in np.unique(df_valid['fid']):
+    maskFilt = df_valid['fid'] == filt
+
+    plt.errorbar(
+        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df_valid[maskFilt]['magpsf'],
+        df_valid[maskFilt]['sigmapsf'],
+        ls = '', marker='x', 
+        color=colordic[filt], 
+        label='{} band (PSF-fit)'.format(filtdic[filt]),
+    )
+    
+    
+    plt.errorbar(
+        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df_valid[maskFilt]['mag_dc'],
+        df_valid[maskFilt]['err_dc'],
+        ls = '', marker='o', 
+        color=colordic[filt], 
+        label='{} band (DC)'.format(filtdic[filt]),
+    )
+    #To show if there is a variance in the reference( magnitude of the nearest source in the reference image PSF)
+    plt.errorbar(
+        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
+        df_valid[maskFilt]['magnr'],
+        ls = '--', 
+        color=colordic[filt], 
+        label='{} ref (DC)'.format(filtdic[filt]),
+    )
+    
+    """
+    ref_r = np.sqrt((df_valid[df_valid['fid'] == 2]['magnr'] ** 2).mean())# Quadratic Mean
+    ref_g = np.sqrt((df_valid[df_valid['fid'] == 1]['magnr'] ** 2).mean())
+
+
+#  Average Values (Used in Fink)
+#plt.axhline(y=ref_r, color=colordic[2], linestyle='--')
+#plt.axhline(y=ref_g, color=colordic[1], linestyle='--')
+    """plt.gca().invert_yaxis()
+plt.legend()
+plt.title('Comparison of PSF-fit and DC magnitudes')
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Magnitude');
+    """
+
+# # 
+
+# # 
+
+# # 5) Calculate and plot Apparent DC flux  
+
+# We utilize a function(`apparent_flux`) located within the `fink_utils` package to compute the apparent flux for the valid data.
+
+
+
+#fig = plt.figure(figsize=(15, 7))
+
+    from fink_utils.photometry.conversion import apparent_flux
+
+
+    dc_flux, dc_sigflux = np.transpose(
+        [
+            apparent_flux(*args, jansky=True) for args in zip(
+                df_valid['magpsf'].astype(float).values,
+                df_valid['sigmapsf'].astype(float).values,
+                df_valid['magnr'].astype(float).values,
+                df_valid['sigmagnr'].astype(float).values,
+                df_valid['isdiffpos'].values
+            )
+        ]
+)
+
+    df_valid['dc_flux'] = dc_flux
+    df_valid['dc_sigflux'] = dc_sigflux
+
+    """
+    for filt in np.unique(df['fid']):
+      mask = df_valid['fid'] == filt
+      sub = df_valid[mask]
+      plt.errorbar(
+        sub['jd'].apply(lambda x: x - 2400000.5),
+        sub['dc_flux']*1e3,
+        sub['dc_sigflux']*1e3,
+        ls='', 
+        marker='o',
+        label=filt
+    )
+plt.legend()
+
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Apparent DC flux (millijanksy)');
+    """
+
+# ## Apparent flux for the nearest source
+
+# We create a function `apparent_flux` to determine the apparent flux for the nearest source in the reference image.
+
+
+
+    from FAnomAly_utils.flux import flux_nr
+    nr_flux, nr_sigflux = np.transpose(
+        [
+            flux_nr(*args, jansky=True) for args in zip(
+                df_valid['magnr'].astype(float).values,
+                df_valid['sigmagnr'].astype(float).values
+            )
+        ]
+)
+
+    df_valid['nr_flux'] = nr_flux
+    df_valid['nr_sigflux'] = nr_sigflux
+
+
+
+# # 
+
+# # 
+
+# # 6) Data missing 
+# 
+
+# Our objective here is to retrieve the missing data values, particularly for cases where they represent upper limits.
+
+# Take only Upper limits data
+    maskUpper = pd.isna(df['magpsf'])
+
+    df_Upper = df[maskUpper].sort_values('jd')#, ascending=False)
+
+
+# Compute the average of the sigma magnitude values for the nearest sources.
+
+
+    sigmnr_r = np.sqrt((df_valid[df_valid['fid'] == 2]['sigmagnr'] ** 2).mean())
+    sigmnr_g = np.sqrt((df_valid[df_valid['fid'] == 1]['sigmagnr'] ** 2).mean())
+
+
+# We define a function named `apparent_flux_Upper` to calculate the apparent flux, along with its associated sigma (error), for both the DC flux and NR flux, specifically for data representing upper limits.
+
+
+
+    from FAnomAly_utils.flux import apparent_flux_Upper
+
+    dc_flux, dc_sigflux,nr_sigflux = np.transpose(
+        [
+            apparent_flux_Upper(*args, ref_r, ref_g, sigmnr_r, sigmnr_g, jansky=True) for args in zip(
+                df_Upper['diffmaglim'].astype(float).values,
+                df_Upper['fid'].astype(int).values,
+
+            )
+        ]
+)
+
+    df_Upper['dc_flux'] = dc_flux
+    df_Upper['dc_sigflux'] = dc_sigflux
+    df_Upper['nr_sigflux'] = nr_sigflux
+    df_Upper['nr_flux'] = dc_flux
+
+
+# ### Plot the apparent DC flux (in millijansky) for both valid and upper limits data.
+    """
+
+fig = plt.figure(figsize=(15, 7))
+
+
+for filt in np.unique(df['fid']):
+    mask = df_valid['fid'] == filt
+    sub = df_valid[mask]
+    plt.errorbar(
+        sub['jd'].apply(lambda x: x - 2400000.5),
+        sub['dc_flux']*1e3, 
+        sub['dc_sigflux']*1e3,
+        ls='', 
+        marker='o',
+        color=colordic[filt], 
+
+        label=f"{filt} valid"
+    )
+    
+    mask2 = df_Upper['fid'] == filt
+
+    plt.errorbar(
+        df_Upper[mask2]['jd'].apply(lambda x: x - 2400000.5),
+        df_Upper[mask2]['dc_flux']*1e3,
+        df_Upper[mask2]['dc_sigflux']*1e3,
+        ls='', 
+        marker='.',
+        color=colordic[filt], 
+
+        label=f"{filt} Upperlim"
+    )
+    
+    
+    
+plt.legend()
+
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Apparent DC flux (millijanksy)');
+    """
+
+# # 
+
+# # 
+
+# # 7) Combine Upper with valid 
+
+# We merge the data from the upper limit and valid datasets based on specific columns.
+
+
+    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux']
+    combined_df = pd.concat([df_Upper[columns_to_keep], df_valid[columns_to_keep]], axis=0)
+
+
+    combined_df.sort_index(inplace=True)
+
+
+
+# # 
+
+# # 
+
+# # 8) Data by days 
+
+# Here, we group the data by modified Julian date on a daily basis and by filter ID (1 for g, 2 for R, 3 for i), computing the average values of flux and sigma flux(for both DC and NR) using the `Weighted_Mean` functions.
+    
+
+    combined_df['mjd'] = combined_df['jd'].apply(lambda x: x - 2400000.5)
+
+
+# #### Convert 'mjd' to integer to remove fractional part
+#
+
+    combined_df['mjd'] = combined_df['mjd'].astype(int)
+
+
+# #### group the data by mjd and by filter
+
+
+    df2 = combined_df.groupby(['mjd','fid'])
+
+
+# #### calculate the average values
+
+
+    from FAnomAly_utils.Weighted_Mean import Weighted_Mean_general
+
+    df_mod = pd.DataFrame()
+    df_mod = df2.apply(Weighted_Mean_general, flux_col='dc_flux', sigflux_col='dc_sigflux')
+
+
+
+    df_mod[['nr_flux', 'nr_sigflux']] = df2.apply(Weighted_Mean_general, flux_col='nr_flux',sigflux_col='nr_sigflux')
+
+
+
+# Only once !...
+    df_mod.reset_index(inplace=True)
+
+
+
+    df_mod.head(2)
+
+
+# # 
+
+# # 
+
+# # 9) Fill the missing days ! 
+
+# If there are missing days without alerts in the data, we can fill these gaps by inserting average values.
+
+
+    from FAnomAly_utils.Weighted_Mean import Weighted_Mean_all
+
+    min_mjd = df_mod['mjd'].min()
+    max_mjd = df_mod['mjd'].max()
+# Create a DataFrame all_days containing a range of MJD values from the minimum to the maximum MJD found in df_mod.
+    all_days = pd.DataFrame({'mjd': range(min_mjd, max_mjd + 1)})
+
+    df_extended = df_mod
+    df_extended['source'] = 'Original'
+
+
+#If this condition is true, it indicates that there is missing data.
+    if (df_mod.shape[0] < (max_mjd -min_mjd + 1)*2):        
+     for filt in np.unique(df_extended['fid']):
+        #print(filt)
+        mask = df_extended['fid'] == filt
+        sub = df_extended[mask]
+        data_days = df_extended[mask]['mjd']
+
+        missing_days = all_days[~all_days['mjd'].isin(data_days)]
+    
+    
+        df_new = pd.DataFrame(index=missing_days['mjd'])
+    
+        dc_flux ,nr_flux = Weighted_Mean_all(sub)
+        
+        dc_sigflux = sub['dc_flux'].std()
+        nr_sigflux = sub['nr_flux'].std()
+        
+        #print(dc_flux*1e3, dc_sigflux*1e3 ,nr_flux*1e3 ,nr_sigflux*1e3)
+
+        
+        df_new[['fid','dc_flux', 'dc_sigflux' ,'nr_flux' ,'nr_sigflux']] = [filt,dc_flux, dc_sigflux ,nr_flux ,nr_sigflux]
+        df_new['source'] = 'Missing'
+
+        df_extended = pd.concat([df_extended, df_new.reset_index()], ignore_index=True)
+        
+
+
+    df_extended.sort_values(by='mjd',   inplace=True)
+    df_extended.reset_index(drop= True, inplace=True)
+    
+    return pdf_selectionne, df_extended
+
+
+
+# # 
+
+# # 
+
+# # 10) Create a final dataframe to consolidate the values of this alert into a single row.
+
+# In this dataframe, include another dataframe as a dictionary containing the values of mjd,flux, sigma, and so on.
+
+
+
+df_anomaly = pd.DataFrame()
+
+
+for pdf_selec in list_Ids:
+    Anomaly, df_anm = function_FN(pdf_selec)
+    #df_anomaly[['objectId', 'candid', 'jd','df']] = [[Anomaly.objectId], [Anomaly.candid],[Anomaly.candidate['jd']], [df_anm.to_dict()]]
+
+    df_anomaly['objectId'] = [Anomaly.objectId]
+    df_anomaly['candid'] = [Anomaly.candid]
+    df_anomaly['jd'] = [Anomaly.candidate['jd']]
+    df_anomaly['df'] = [df_anm.to_dict()]
+    
+
+    fig = plt.figure(figsize=(15, 10))
+
+    colordic = {1: 'C0', 2: 'C1'}
+    filtdic = {1: 'g', 2: 'r'}
+
+
+    for filt in np.unique(df_anm['fid']):
+        mask = df_anm['fid'] == filt
+        mask_missing =  df_anm['source'] == "Missing"
+        mask_original = df_anm['source'] == "Original"
+        sub2 = df_anm[mask & mask_missing]
+        sub = df_anm[mask & mask_original]
+        plt.errorbar(
+            sub['mjd'],
+            sub['dc_flux']*1e3, 
+            sub['dc_sigflux']*1e3,
+            ls='', 
+            marker='o',
+            color=colordic[filt], 
+
+            label=f"{filt} original flux dc"
+        )
+        plt.errorbar(
+            sub2['mjd'],
+            sub2['dc_flux']*1e3, 
+            sub2['dc_sigflux']*1e3,
+            ls='', 
+            marker='x',
+            color=colordic[filt], 
+
+            label=f"{filt} Missing flux dc"
+        )
+
+        
+    plt.legend()
+    plt.title(f'{Anomaly.objectId}')
+    plt.xlabel('Modified Julian Date [UTC]  ')
+    plt.ylabel('Apparent  DC and nr flux (millijanksy)')
+    print(Anomaly.objectId)
+    
+#print(df_anomaly['df'])
+
+
+
+#print("555 ")
+
+"""
+# In[37]:
+
+
+#Here's an example of how we can utilize the dataframe of the first row:
+
+
+# In[38]:
+
+
+df.head(3)
+
+
+# ### plot apparent  DC and nr flux in millijanksy 
+
+# In[39]:
+
+
+
+# In[40]:
+
+
+fig = plt.figure(figsize=(15, 7))
+
+
+for filt in np.unique(df_mod['fid']):
+    mask = df_mod['fid'] == filt
+    sub = df_mod
+    plt.errorbar(
+        sub[mask]['mjd'],
+        sub[mask]['dc_flux']*1e3, 
+        sub[mask]['dc_sigflux']*1e3,
+        ls='', 
+        marker='o',
+        color=colordic[filt], 
+
+        label=f"{filt} all flux dc"
+    )
+    
+
+    
+plt.legend()
+
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Apparent  DC and nr flux (millijanksy)');
+
+
+# # 
+
+# # 
+
+# # 
+
+# # 
+
+# # Trash 
+
+# In[41]:
+
+
+fig = plt.figure(figsize=(15, 7))
+
+
+for filt in np.unique(df['fid']):
+    mask = df_valid['fid'] == filt
+    sub = df_valid[mask]
+    plt.errorbar(
+        sub['jd'].apply(lambda x: x - 2400000.5),
+        sub['dc_flux']*1e3, 
+        sub['dc_sigflux']*1e3,
+        ls='', 
+        marker='o',
+        color=colordic[filt], 
+
+        label=f"{filt} valid"
+    )
+    
+    mask2 = df_Upper['fid'] == filt
+
+    plt.errorbar(
+        df_Upper[mask2]['jd'].apply(lambda x: x - 2400000.5),
+        df_Upper[mask2]['dc_flux']*1e3,
+        df_Upper[mask2]['dc_sigflux']*1e3,
+        ls='', 
+        marker='.',
+        color=colordic[filt], 
+
+        label=f"{filt} Upperlim"
+    )
+    
+    
+    
+plt.legend()
+
+plt.xlabel('Modified Julian Date [UTC]')
+plt.ylabel('Apparent DC flux (millijanksy)');
+"""
