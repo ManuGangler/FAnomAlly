@@ -17,41 +17,23 @@ import matplotlib.pyplot as plt
 pdf = pd.read_parquet('/Users/mohamadjouni/work/ftransfer_ztf_2024-02-01_689626')
 # In[2]
 
-Id = pdf['objectId'][4771]
-
-#id_plus_repete = pdf['objectId'].value_counts().idxmax()
-
-# here opting for the most frequently occurring alert.
-#pdf_selectionne = pdf.loc[pdf['objectId'] == id_plus_repete]
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-
-list_Ids = [pdf_selectionne]
-#list_Ids.append(pdf_selectionne)
-print(list_Ids)
+unique_ids = pdf['objectId'].unique().tolist()
+#print(len(unique_ids))
 
 
-
-top_15 = pdf['objectId'].value_counts().index.tolist()
-print(len(top_15))
-for i in top_15:
-    j = pdf.loc[pdf['objectId'] == i]
-    
-    list_Ids.append(j)
-print("done")
 # In[3]
 
 k =1
 
 
-def test_is_source(pdf_selectionne):
+def test_is_source(Id):
     global k
-    #print(k)
-    #k =k + 1
+    
+    pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
     candidate_df = pdf_selectionne['candidate'].apply(pd.Series)
 
 
 
-    candidate_df = pdf_selectionne['candidate'].apply(pd.Series)
 
     # index of the candidate with the biggest 'jd'
     index_max_jd = candidate_df['jd'].idxmax()
@@ -98,8 +80,9 @@ def test_is_source(pdf_selectionne):
       
       
 
+# can be optimized by removing the function !
 
-
-for pdf_selec in list_Ids:
-     test_is_source(pdf_selec)    #"""  
+for Id in unique_ids:
+    
+     test_is_source(Id)
 print(k)
