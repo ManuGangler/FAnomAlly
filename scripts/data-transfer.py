@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 
-pdf = pd.read_parquet('../ftransfer_ztf_2024-02-01_689626')
+pdf = pd.read_parquet('/Users/mohamadjouni/work/ftransfer_ztf_2024-02-01_689626')
 # In[2]
 
 Id = pdf['objectId'][4771]
@@ -23,10 +23,32 @@ pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
 list_Ids = [pdf_selectionne]
 #list_Ids.append(pdf_selectionne)
 
-top_15 = pdf['objectId'].value_counts().head(1).index.tolist()
+Id = 'ZTF17aaaaoqd'
+pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+list_Ids.append(pdf_selectionne)
+
+Id = 'ZTF19acbmgup'
+pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+list_Ids.append(pdf_selectionne)
+
+Id = 'ZTF18abqeblc'
+pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+list_Ids.append(pdf_selectionne)
+#Id = 'ZTF19acbmgup'
+
+Id = 'ZTF18aaadujp'
+pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+list_Ids.append(pdf_selectionne)
+#Id = 'ZTF19acbmgup'
+
+
+
+top_15 = pdf['objectId'].value_counts().head(25).index.tolist()
 
 for i in top_15:
-    list_Ids.append(pdf.loc[pdf['objectId'] == i])
+    j = pdf.loc[pdf['objectId'] == i]
+    
+    list_Ids.append(j)
 
 
 def function_FN(pdf_selectionne):
