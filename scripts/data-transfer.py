@@ -6,6 +6,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from fink_utils.photometry.conversion import apparent_flux
+from FAnomAly_utils.flux import flux_nr
+from FAnomAly_utils.flux import apparent_flux_Upper
 
 
 
@@ -21,25 +24,6 @@ Id = pdf['objectId'][4771]
 pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
 
 list_Ids = [pdf_selectionne]
-#list_Ids.append(pdf_selectionne)
-
-Id = 'ZTF17aaaaoqd'
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-list_Ids.append(pdf_selectionne)
-
-Id = 'ZTF19acbmgup'
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-list_Ids.append(pdf_selectionne)
-
-Id = 'ZTF18abqeblc'
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-list_Ids.append(pdf_selectionne)
-#Id = 'ZTF19acbmgup'
-
-Id = 'ZTF18aaadujp'
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-list_Ids.append(pdf_selectionne)
-#Id = 'ZTF19acbmgup'
 
 
 
@@ -118,73 +102,15 @@ def function_FN(pdf_selectionne):
 
 
 
-# ### Next, we plot the comparison between PSF-fit magnitudes and DC magnitudes.
-
-# We calculate the reference value as the average magnitude of the nearest source in the reference image PSF catalog.
-    """
-fig = plt.figure(figsize=(15, 5))
-
-colordic = {1: 'C0', 2: 'C1'}
-filtdic = {1: 'g', 2: 'r'}
-
-for filt in np.unique(df_valid['fid']):
-    maskFilt = df_valid['fid'] == filt
-
-    plt.errorbar(
-        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
-        df_valid[maskFilt]['magpsf'],
-        df_valid[maskFilt]['sigmapsf'],
-        ls = '', marker='x', 
-        color=colordic[filt], 
-        label='{} band (PSF-fit)'.format(filtdic[filt]),
-    )
-    
-    
-    plt.errorbar(
-        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
-        df_valid[maskFilt]['mag_dc'],
-        df_valid[maskFilt]['err_dc'],
-        ls = '', marker='o', 
-        color=colordic[filt], 
-        label='{} band (DC)'.format(filtdic[filt]),
-    )
-    #To show if there is a variance in the reference( magnitude of the nearest source in the reference image PSF)
-    plt.errorbar(
-        df_valid[maskFilt]['jd'].apply(lambda x: x - 2400000.5),
-        df_valid[maskFilt]['magnr'],
-        ls = '--', 
-        color=colordic[filt], 
-        label='{} ref (DC)'.format(filtdic[filt]),
-    )
-    
-    """
     ref_r = np.sqrt((df_valid[df_valid['fid'] == 2]['magnr'] ** 2).mean())# Quadratic Mean
     ref_g = np.sqrt((df_valid[df_valid['fid'] == 1]['magnr'] ** 2).mean())
 
 
-#  Average Values (Used in Fink)
-#plt.axhline(y=ref_r, color=colordic[2], linestyle='--')
-#plt.axhline(y=ref_g, color=colordic[1], linestyle='--')
-    """plt.gca().invert_yaxis()
-plt.legend()
-plt.title('Comparison of PSF-fit and DC magnitudes')
-plt.xlabel('Modified Julian Date [UTC]')
-plt.ylabel('Magnitude');
-    """
+    # # 5) Calculate Apparent DC flux  
 
-# # 
-
-# # 
-
-# # 5) Calculate and plot Apparent DC flux  
-
-# We utilize a function(`apparent_flux`) located within the `fink_utils` package to compute the apparent flux for the valid data.
+    # We utilize a function(`apparent_flux`) located within the `fink_utils` package to compute the apparent flux for the valid data.
 
 
-
-#fig = plt.figure(figsize=(15, 7))
-
-    from fink_utils.photometry.conversion import apparent_flux
 
 
     dc_flux, dc_sigflux = np.transpose(
@@ -202,31 +128,13 @@ plt.ylabel('Magnitude');
     df_valid['dc_flux'] = dc_flux
     df_valid['dc_sigflux'] = dc_sigflux
 
-    """
-    for filt in np.unique(df['fid']):
-      mask = df_valid['fid'] == filt
-      sub = df_valid[mask]
-      plt.errorbar(
-        sub['jd'].apply(lambda x: x - 2400000.5),
-        sub['dc_flux']*1e3,
-        sub['dc_sigflux']*1e3,
-        ls='', 
-        marker='o',
-        label=filt
-    )
-plt.legend()
 
-plt.xlabel('Modified Julian Date [UTC]')
-plt.ylabel('Apparent DC flux (millijanksy)');
-    """
+    # ## Apparent flux for the nearest source
 
-# ## Apparent flux for the nearest source
-
-# We create a function `apparent_flux` to determine the apparent flux for the nearest source in the reference image.
+    # We create a function `apparent_flux` to determine the apparent flux for the nearest source in the reference image.
 
 
 
-    from FAnomAly_utils.flux import flux_nr
     nr_flux, nr_sigflux = np.transpose(
         [
             flux_nr(*args, jansky=True) for args in zip(
@@ -239,11 +147,6 @@ plt.ylabel('Apparent DC flux (millijanksy)');
     df_valid['nr_flux'] = nr_flux
     df_valid['nr_sigflux'] = nr_sigflux
 
-
-
-# # 
-
-# # 
 
 # # 6) Data missing 
 # 
@@ -267,7 +170,6 @@ plt.ylabel('Apparent DC flux (millijanksy)');
 
 
 
-    from FAnomAly_utils.flux import apparent_flux_Upper
 
     dc_flux, dc_sigflux,nr_sigflux = np.transpose(
         [
