@@ -1,42 +1,32 @@
 #!/usr/bin/env python
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
 
 # In[1]
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from fink_utils.photometry.conversion import apparent_flux
 from FAnomAly_utils.flux import flux_nr
 from FAnomAly_utils.flux import apparent_flux_Upper
+from FAnomAly_utils.Weighted_Mean import Weighted_Mean_general
+from FAnomAly_utils.Weighted_Mean import Weighted_Mean_all
 
 
 
 pdf = pd.read_parquet('/Users/mohamadjouni/work/ftransfer_ztf_2024-02-01_689626')
 # In[2]
-
-Id = pdf['objectId'][4771]
-
-#id_plus_repete = pdf['objectId'].value_counts().idxmax()
-
-# here opting for the most frequently occurring alert.
-#pdf_selectionne = pdf.loc[pdf['objectId'] == id_plus_repete]
-pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
-
-list_Ids = [pdf_selectionne]
+unique_ids = pdf['objectId'].unique().tolist()
 
 
 
-top_15 = pdf['objectId'].value_counts().head(25).index.tolist()
-
-for i in top_15:
-    j = pdf.loc[pdf['objectId'] == i]
+def function_FN(Id):
     
-    list_Ids.append(j)
-
-
-def function_FN(pdf_selectionne):
+    #print(Id)
     
+    pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
+
     candidate_df = pdf_selectionne['candidate'].apply(pd.Series)
 
 
@@ -78,7 +68,7 @@ def function_FN(pdf_selectionne):
     )
 
     if isSource:
-      print('It looks like there is a source behind. Lets compute the DC magnitude instead.')
+      #############print('It looks like there is a source behind. Lets compute the DC magnitude instead.')
     
     # Use DC magnitude instead of difference mag
       mag_dc, err_dc = np.transpose(
@@ -96,7 +86,7 @@ def function_FN(pdf_selectionne):
       df_valid['mag_dc'] = mag_dc
       df_valid['err_dc'] = err_dc
     else:
-      print('No source found -- keeping PSF fit magnitude')
+      ##############print('No source found -- keeping PSF fit magnitude')
       df_valid['mag_dc'] = df_valid['magpsf']
       df_valid['err_dc'] = df_valid['sigmapsf']
 
@@ -167,11 +157,19 @@ def function_FN(pdf_selectionne):
 
 
 # We define a function named `apparent_flux_Upper` to calculate the apparent flux, along with its associated sigma (error), for both the DC flux and NR flux, specifically for data representing upper limits.
+    
 
+    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux']
 
+    if len(df_Upper) == 0 :
+        print("there is no Upperlimits")
+    
+        combined_df = df_valid[columns_to_keep]
+    
+    else: 
+        
 
-
-    dc_flux, dc_sigflux,nr_sigflux = np.transpose(
+        dc_flux, dc_sigflux,nr_sigflux = np.transpose(
         [
             apparent_flux_Upper(*args, ref_r, ref_g, sigmnr_r, sigmnr_g, jansky=True) for args in zip(
                 df_Upper['diffmaglim'].astype(float).values,
@@ -181,10 +179,14 @@ def function_FN(pdf_selectionne):
         ]
 )
 
-    df_Upper['dc_flux'] = dc_flux
-    df_Upper['dc_sigflux'] = dc_sigflux
-    df_Upper['nr_sigflux'] = nr_sigflux
-    df_Upper['nr_flux'] = dc_flux
+        df_Upper['dc_flux'] = dc_flux
+        df_Upper['dc_sigflux'] = dc_sigflux
+        df_Upper['nr_sigflux'] = nr_sigflux
+        df_Upper['nr_flux'] = dc_flux
+        
+        combined_df = pd.concat([df_Upper[columns_to_keep], df_valid[columns_to_keep]], axis=0)
+
+
 
 
 # # 
@@ -194,11 +196,6 @@ def function_FN(pdf_selectionne):
 # # 7) Combine Upper with valid 
 
 # We merge the data from the upper limit and valid datasets based on specific columns.
-
-
-    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux']
-    combined_df = pd.concat([df_Upper[columns_to_keep], df_valid[columns_to_keep]], axis=0)
-
 
     combined_df.sort_index(inplace=True)
 
@@ -231,7 +228,6 @@ def function_FN(pdf_selectionne):
 # #### calculate the average values
 
 
-    from FAnomAly_utils.Weighted_Mean import Weighted_Mean_general
 
     df_mod = pd.DataFrame()
     df_mod = df2.apply(Weighted_Mean_general, flux_col='dc_flux', sigflux_col='dc_sigflux')
@@ -242,7 +238,6 @@ def function_FN(pdf_selectionne):
 
 
 
-# Only once !...
     df_mod.reset_index(inplace=True)
 
 
@@ -250,16 +245,10 @@ def function_FN(pdf_selectionne):
     df_mod.head(2)
 
 
-# # 
-
-# # 
-
 # # 9) Fill the missing days ! 
 
 # If there are missing days without alerts in the data, we can fill these gaps by inserting average values.
 
-
-    from FAnomAly_utils.Weighted_Mean import Weighted_Mean_all
 
     min_mjd = df_mod['mjd'].min()
     max_mjd = df_mod['mjd'].max()
@@ -273,7 +262,7 @@ def function_FN(pdf_selectionne):
 #If this condition is true, it indicates that there is missing data.
     if (df_mod.shape[0] < (max_mjd -min_mjd + 1)*2):        
      for filt in np.unique(df_extended['fid']):
-        #print(filt)
+
         mask = df_extended['fid'] == filt
         sub = df_extended[mask]
         data_days = df_extended[mask]['mjd']
@@ -288,7 +277,6 @@ def function_FN(pdf_selectionne):
         dc_sigflux = sub['dc_flux'].std()
         nr_sigflux = sub['nr_flux'].std()
         
-        #print(dc_flux*1e3, dc_sigflux*1e3 ,nr_flux*1e3 ,nr_sigflux*1e3)
 
         
         df_new[['fid','dc_flux', 'dc_sigflux' ,'nr_flux' ,'nr_sigflux']] = [filt,dc_flux, dc_sigflux ,nr_flux ,nr_sigflux]
@@ -304,11 +292,6 @@ def function_FN(pdf_selectionne):
     return pdf_selectionne, df_extended
 
 
-
-# # 
-
-# # 
-
 # # 10) Create a final dataframe to consolidate the values of this alert into a single row.
 
 # In this dataframe, include another dataframe as a dictionary containing the values of mjd,flux, sigma, and so on.
@@ -316,10 +299,11 @@ def function_FN(pdf_selectionne):
 
 
 df_anomaly = pd.DataFrame()
+# can be optimized by removing the function !
 
-
-for pdf_selec in list_Ids:
-    Anomaly, df_anm = function_FN(pdf_selec)
+for Id in unique_ids:
+    
+    Anomaly, df_anm = function_FN(Id)
     #df_anomaly[['objectId', 'candid', 'jd','df']] = [[Anomaly.objectId], [Anomaly.candid],[Anomaly.candidate['jd']], [df_anm.to_dict()]]
 
     df_anomaly['objectId'] = [Anomaly.objectId]
@@ -328,7 +312,7 @@ for pdf_selec in list_Ids:
     df_anomaly['df'] = [df_anm.to_dict()]
     
 
-    fig = plt.figure(figsize=(15, 10))
+    """fig = plt.figure(figsize=(15, 10))
 
     colordic = {1: 'C0', 2: 'C1'}
     filtdic = {1: 'g', 2: 'r'}
@@ -366,108 +350,8 @@ for pdf_selec in list_Ids:
     plt.title(f'{Anomaly.objectId}')
     plt.xlabel('Modified Julian Date [UTC]  ')
     plt.ylabel('Apparent  DC and nr flux (millijanksy)')
-    print(Anomaly.objectId)
+    print(Anomaly.objectId)"""
     
 #print(df_anomaly['df'])
 
 
-
-#print("555 ")
-
-"""
-# In[37]:
-
-
-#Here's an example of how we can utilize the dataframe of the first row:
-
-
-# In[38]:
-
-
-df.head(3)
-
-
-# ### plot apparent  DC and nr flux in millijanksy 
-
-# In[39]:
-
-
-
-# In[40]:
-
-
-fig = plt.figure(figsize=(15, 7))
-
-
-for filt in np.unique(df_mod['fid']):
-    mask = df_mod['fid'] == filt
-    sub = df_mod
-    plt.errorbar(
-        sub[mask]['mjd'],
-        sub[mask]['dc_flux']*1e3, 
-        sub[mask]['dc_sigflux']*1e3,
-        ls='', 
-        marker='o',
-        color=colordic[filt], 
-
-        label=f"{filt} all flux dc"
-    )
-    
-
-    
-plt.legend()
-
-plt.xlabel('Modified Julian Date [UTC]')
-plt.ylabel('Apparent  DC and nr flux (millijanksy)');
-
-
-# # 
-
-# # 
-
-# # 
-
-# # 
-
-# # Trash 
-
-# In[41]:
-
-
-fig = plt.figure(figsize=(15, 7))
-
-
-for filt in np.unique(df['fid']):
-    mask = df_valid['fid'] == filt
-    sub = df_valid[mask]
-    plt.errorbar(
-        sub['jd'].apply(lambda x: x - 2400000.5),
-        sub['dc_flux']*1e3, 
-        sub['dc_sigflux']*1e3,
-        ls='', 
-        marker='o',
-        color=colordic[filt], 
-
-        label=f"{filt} valid"
-    )
-    
-    mask2 = df_Upper['fid'] == filt
-
-    plt.errorbar(
-        df_Upper[mask2]['jd'].apply(lambda x: x - 2400000.5),
-        df_Upper[mask2]['dc_flux']*1e3,
-        df_Upper[mask2]['dc_sigflux']*1e3,
-        ls='', 
-        marker='.',
-        color=colordic[filt], 
-
-        label=f"{filt} Upperlim"
-    )
-    
-    
-    
-plt.legend()
-
-plt.xlabel('Modified Julian Date [UTC]')
-plt.ylabel('Apparent DC flux (millijanksy)');
-"""
