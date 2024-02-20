@@ -31,19 +31,5 @@ def Weighted_Mean_all(df):
 
     x_bar_dc = (df['dc_flux']*wi_dc).sum() / wi_dc.sum()
     x_bar_nr = (df['nr_flux']*wi_nr).sum() / wi_nr.sum()
-    
-    """x_2_dc = ((df['dc_flux'] - x_bar_dc)**2 *wi_dc).sum()
-    x_2_nr = ((df['nr_flux'] - x_bar_nr)**2 *wi_nr).sum()
-    
-    sigma_x_dc = np.sqrt(1/ wi_dc.sum())
-    sigma_x_nr = np.sqrt(1/ wi_nr.sum())
-    
-    fact_dc = np.sqrt(x_2_dc/ (N-1))
-    fact_nr = np.sqrt(x_2_nr/ (N-1))
-    
-    if (fact_dc >= 1) : 
-        sigma_x_dc *= fact_dc    
-    if (fact_nr >= 1) : 
-        sigma_x_nr *= fact_nr"""
         
     return x_bar_dc, x_bar_nr

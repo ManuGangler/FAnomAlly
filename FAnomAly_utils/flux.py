@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
 import numpy as np
 from typing import Tuple
 
@@ -20,10 +17,7 @@ def flux_nr(
 
     Returns
     --------
-    dc_flux: float
-        Apparent flux
-    dc_sigflux: float
-        Error on apparent flux
+
     """
 
     nr_flux = 10 ** (-0.4 * magnr)
