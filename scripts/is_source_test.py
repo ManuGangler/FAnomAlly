@@ -15,7 +15,7 @@ from fink_utils.photometry.conversion import dc_mag
 from fink_utils.photometry.utils import is_source_behind
 
 
-def test_is_source(pdf, Id):
+def test_is_source(Id):
     global k
     
     pdf_selectionne = pdf.loc[pdf['objectId'] == Id]
@@ -48,14 +48,15 @@ def test_is_source(pdf, Id):
         k = k+ 1
 
 
-def main():
+def main():    
+    global pdf
     pdf = pd.read_parquet('/Users/mohamadjouni/work/ftransfer_ztf_2024-02-01_689626')
     unique_ids = pdf['objectId'].unique().tolist()
-    global k 
+    global k
     k = 0
     
     for Id in unique_ids[0:500]:
-        test_is_source(pdf, Id)
+        test_is_source(Id)
     
     print(k)
 
