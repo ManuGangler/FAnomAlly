@@ -24,8 +24,6 @@ def Weighted_Mean_general(group, flux_col='dc_flux', sigflux_col='dc_sigflux'):
     return pd.Series({flux_col: x_bar, sigflux_col: sigma_x})
 
 def Weighted_Mean_all(df):
-    N= len(df)
-
     wi_dc = 1/df['dc_sigflux']**2
     wi_nr = 1/df['nr_sigflux']**2
 
