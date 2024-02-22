@@ -16,13 +16,13 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(
-    name='FAnomAlly_utils',
+    name='FAnomAly',
     version='0.0.1',
     description='Utility package for detecting anomalies',
     long_description=readme,
     author='Emmanuel Gangler, Mohamad Jouni',
     author_email='mohamad.jouni@etu.umontpellier.fr',
-    url='https://github.com/ManuGangler/FAnomAlly/FAnomAly_utils',
+    url='https://github.com/ManuGangler/FAnomAlly/FAnomAly',
     license=license,
     packages=find_packages()
 )

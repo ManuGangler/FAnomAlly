@@ -8,10 +8,6 @@ Created on Mon Feb 19 09:09:52 2024
 
 
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-
-from fink_utils.photometry.conversion import dc_mag
 from fink_utils.photometry.utils import is_source_behind
 
 
@@ -50,7 +46,7 @@ def test_is_source(Id):
 
 def main():    
     global pdf
-    pdf = pd.read_parquet('/Users/mohamadjouni/work/ftransfer_ztf_2024-02-01_689626')
+    pdf = pd.read_parquet('../../ftransfer_ztf_2024-02-01_689626')
     unique_ids = pdf['objectId'].unique().tolist()
     global k
     k = 0
