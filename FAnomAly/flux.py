@@ -37,8 +37,8 @@ def apparent_flux_Upper(
     fid: int,
     ref_r: float,
     ref_g: float,
-    sigmnr_r: float,
-    sigmnr_g: float,
+    sigmnr_mean_r: float,
+    sigmnr_mean_g: float,
     jansky: bool = True
 
 ) -> Tuple[float, float]:
@@ -58,13 +58,13 @@ def apparent_flux_Upper(
 
     if (fid == 1):
         mnr = ref_g
-        sigmnr = sigmnr_g
+        sigmnr = sigmnr_mean_g
         
         sig_c = (10 ** (-0.4 * diffmaglim))/np.sqrt(3) * 1.9973023835917523 # (rescale factor ! )
 
     if (fid == 2):
         mnr = ref_r
-        sigmnr = sigmnr_r
+        sigmnr = sigmnr_mean_r
         
         sig_c = (10 ** (-0.4 * diffmaglim))/np.sqrt(3) * 4.654601721082196 # (rescale factor ! )
 
