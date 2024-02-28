@@ -105,7 +105,33 @@ def function_FN(Id):
          df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
     elif len(df_valid[df_valid['fid'] == 2]) ==0 : 
          df_Upper.drop(df_Upper[df_Upper['fid'] == 2].index, inplace=True)
+    if len(df_valid[df_valid['fid'] == 1]) ==0 :
+         df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
     
+         new_rows = pd.DataFrame({'fid': [1, 1],
+                             'jd': [df_valid['jd'].min(), df_valid['jd'].max()],
+                             'dc_flux': [0, 0],
+                             'dc_sigflux': [0, 0],
+                             'nr_flux' : [0,0],
+                             'nr_sigflux':[0,0]
+                            })
+
+         df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
+
+    elif len(df_valid[df_valid['fid'] == 2]) ==0 : 
+          df_Upper.drop(df_Upper[df_Upper['fid'] == 2].index, inplace=True)
+    
+        
+          new_rows = pd.DataFrame({'fid': [2, 2],
+                             'jd': [df_valid['jd'].min(), df_valid['jd'].max()],
+                             'dc_flux': [0, 0],
+                             'dc_sigflux': [0, 0],
+                             'nr_flux' : [0,0],
+                             'nr_sigflux':[0,0]
+                           })
+
+          df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
+
     there_upper = (len(df_Upper)>0)
 
     if there_upper :
@@ -198,7 +224,7 @@ def function_FN(Id):
         
     df_extended['objectId'] = Id 
 
-    df_extended.sort_values(by='mjd',   inplace=True)
+    df_extended.sort_values(by=['mjd','fid'],   inplace=True)
     df_extended.reset_index(drop= True, inplace=True)
     
     return pdf_last_alert, df_extended
@@ -220,7 +246,7 @@ def main():
     results=[]
     results2=[]
 
-    for Id in unique_ids:
+    for Id in unique_ids[:1000]:
        #print(Id)
 
        Anomaly, df_anm = function_FN(Id)
@@ -237,7 +263,6 @@ def main():
     end_time = time.time()
     elapsed_time = end_time - start_time
     print("Temps écoulé:", elapsed_time, "secondes")
-
 
 
 
