@@ -100,11 +100,9 @@ def function_FN(Id):
     df_Upper = df[maskUpper].sort_values('jd')
 
 
-    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux']
-    if len(df_valid[df_valid['fid'] == 1]) ==0 : 
-         df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
-    elif len(df_valid[df_valid['fid'] == 2]) ==0 : 
-         df_Upper.drop(df_Upper[df_Upper['fid'] == 2].index, inplace=True)
+    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux', 'source']
+
+    df_valid['source'] = 1
     if len(df_valid[df_valid['fid'] == 1]) ==0 :
          df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
     
@@ -113,7 +111,8 @@ def function_FN(Id):
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
-                             'nr_sigflux':[0,0]
+                             'nr_sigflux':[0,0],
+                             'source' : [0,0]
                             })
 
          df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
@@ -127,7 +126,9 @@ def function_FN(Id):
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
-                             'nr_sigflux':[0,0]
+                             'nr_sigflux':[0,0],
+                             'source' : [0,0]
+
                            })
 
           df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
@@ -135,6 +136,7 @@ def function_FN(Id):
     there_upper = (len(df_Upper)>0)
 
     if there_upper :
+        df_Upper['source'] = 1
 
   
         mean_sigmnr_g = np.sqrt((df_valid[df_valid['fid'] == 1]['sigmagnr'] ** 2).mean())
@@ -185,7 +187,7 @@ def function_FN(Id):
 
     df_by_days[['nr_flux', 'nr_sigflux']] = df_group.apply(Weighted_Mean_general, flux_col='nr_flux',sigflux_col='nr_sigflux')
 
-
+    df_by_days['source'] = df_group.apply(lambda group: group['source'].iloc[0])
 
     df_by_days.reset_index(inplace=True)
 
@@ -195,7 +197,7 @@ def function_FN(Id):
     all_days = pd.DataFrame({'mjd': range(min_mjd, max_mjd + 1)})
 
     df_extended = df_by_days
-    df_extended['source'] = 1
+    #df_extended['source'] = 1
 
     there_missing_data = (df_by_days.shape[0] < (max_mjd -min_mjd + 1)*2)
     if there_missing_data:        
@@ -246,7 +248,7 @@ def main():
     results=[]
     results2=[]
 
-    for Id in unique_ids[:1000]:
+    for Id in unique_ids[:100]:
        #print(Id)
 
        Anomaly, df_anm = function_FN(Id)
@@ -264,7 +266,7 @@ def main():
     elapsed_time = end_time - start_time
     print("Temps écoulé:", elapsed_time, "secondes")
 
-
+    print(df_merged)
 
 
 if __name__ == "__main__":
