@@ -4,16 +4,17 @@
 import pandas as pd
 import numpy as np
 from fink_utils.photometry.conversion import apparent_flux
-from fink_utils.photometry.conversion import dc_mag
+#from fink_utils.photometry.conversion import dc_mag
 from fink_utils.photometry.utils import is_source_behind
 from FAnomAly.flux import flux_nr
 from FAnomAly.flux import apparent_flux_Upper
+from FAnomAly.dc_mag import dc_mag
 from FAnomAly.Weighted_Mean import Weighted_Mean_general
 from FAnomAly.Weighted_Mean import Weighted_Mean_all
 import time
 
 
-def function_FN(Id):    
+def function_FN(Id, first_day, last_day):    
     pdf_filter_by_shared_Id = pdf.loc[pdf['objectId'] == Id]
 
     candidate_df = pdf_filter_by_shared_Id['candidate'].apply(pd.Series)
@@ -34,7 +35,7 @@ def function_FN(Id):
     maskValid = (df['rb'] > 0.55) & (df['nbad'] == 0)
     df_valid = df[maskValid].sort_values('jd')
 
-    isSource = is_source_behind(df_valid['distnr'].values[0])
+    """isSource = is_source_behind(df_valid['distnr'].values[0])
 
     if isSource:
       #print('It looks like there is a source behind. Lets compute the DC magnitude instead.')
@@ -56,7 +57,26 @@ def function_FN(Id):
     else:
       #print('No source found -- keeping PSF fit magnitude')
       df_valid['mag_dc'] = df_valid['magpsf']
-      df_valid['err_dc'] = df_valid['sigmapsf']
+      df_valid['err_dc'] = df_valid['sigmapsf']"""
+      
+    df_valid['is_Source'] = is_source_behind(df_valid['distnr'])
+      
+    mag_dc, err_dc = np.transpose(
+        [
+            dc_mag(*args) for args in zip(
+                df_valid['magpsf'].astype(float).values,
+                df_valid['sigmapsf'].astype(float).values,
+                df_valid['magnr'].astype(float).values,
+                df_valid['sigmagnr'].astype(float).values,
+                df_valid['isdiffpos'].values,
+                df_valid['is_Source'].astype(bool).values
+
+            )
+        ]
+     )
+    
+    df_valid['mag_dc'] = mag_dc
+    df_valid['i:err_dc'] = err_dc
 
 
 
@@ -107,7 +127,7 @@ def function_FN(Id):
          df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
     
          new_rows = pd.DataFrame({'fid': [1, 1],
-                             'jd': [df_valid['jd'].min(), df_valid['jd'].max()],
+                             'jd': [first_day, last_day],
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
@@ -122,7 +142,7 @@ def function_FN(Id):
     
         
           new_rows = pd.DataFrame({'fid': [2, 2],
-                             'jd': [df_valid['jd'].min(), df_valid['jd'].max()],
+                             'jd': [first_day, last_day],
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
@@ -191,9 +211,10 @@ def function_FN(Id):
 
     df_by_days.reset_index(inplace=True)
 
-    min_mjd = df_by_days['mjd'].min()
-    max_mjd = df_by_days['mjd'].max()
-
+    min_mjd = int(first_day - 2400000.5) #df_by_days['mjd'].min()
+    max_mjd = int(last_day  - 2400000.5)
+    
+    
     all_days = pd.DataFrame({'mjd': range(min_mjd, max_mjd + 1)})
 
     df_extended = df_by_days
@@ -237,6 +258,17 @@ def function_FN(Id):
 def main():    
     #global pdf
     #pdf = pd.read_parquet('../../ftransfer_ztf_2024-02-01_689626')
+    
+    jd_series = pdf.candidate.apply(pd.Series)['jd']
+
+    last_day = jd_series.max()
+    # this is not the perfect way to verify the min but we suppose that 'jd' is sorted
+    first_day = last_day
+    for k in range(len(pdf)):
+        if first_day > pdf.prv_candidates[k][0]['jd']:
+            first_day = pdf.prv_candidates[k][0]['jd']
+        
+    
 
     unique_ids = pdf['objectId'].unique().tolist()
 
@@ -247,11 +279,11 @@ def main():
 
     results=[]
     results2=[]
+    
 
     for Id in unique_ids[:100]:
-       #print(Id)
 
-       Anomaly, df_anm = function_FN(Id)
+       Anomaly, df_anm = function_FN(Id,first_day,last_day)
  
        results.append([Id, Anomaly.candid, Anomaly.candidate['jd']])
        results2.append(df_anm)
@@ -260,15 +292,23 @@ def main():
     df_anomaly2 = pd.concat(results2, ignore_index=True)
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
-    df_merged.to_parquet('df_merged1.parquet', compression='gzip')
+    df_merged.to_parquet('df_merged2.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time
     print("Temps écoulé:", elapsed_time, "secondes")
 
-    print(df_merged)
+    #print(df_merged)
 
+import pstats
 
+import cProfile
 if __name__ == "__main__":
     main()
+    #cProfile.run('main()', sort='cumulative')
+    #cProfile.run('main()', 'profile_stats')
+    #stats = pstats.Stats('profile_stats')
+    #stats.strip_dirs().sort_stats(-1).print_stats()
+
+
 
