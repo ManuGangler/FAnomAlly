@@ -17,7 +17,7 @@ with open('LICENSE') as f:
 
 setup(
     name='FAnomAly',
-    version='0.0.1',
+    version='0.0.2',
     description='Utility package for detecting anomalies',
     long_description=readme,
     author='Emmanuel Gangler, Mohamad Jouni',
