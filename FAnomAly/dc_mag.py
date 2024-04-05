@@ -7,7 +7,7 @@ Created on Thu Apr  4 10:36:39 2024
 """
 import numpy as np
 from typing import Tuple
-from flux import apparent_flux
+from .flux import apparent_flux
 
 def dc_mag(
     magpsf: float,
