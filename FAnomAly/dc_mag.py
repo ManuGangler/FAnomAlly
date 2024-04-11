@@ -51,6 +51,10 @@ def dc_mag(
         dc_mag = -2.5 * np.log10(dc_flux)
         dc_sigmag = dc_sigflux / dc_flux * 1.0857
         
-        return dc_mag, dc_sigmag
+        return dc_mag, dc_sigmag#,dc_flux, dc_sigflux
 
     return magpsf, sigmapsf
+
+
+
+
