@@ -8,6 +8,7 @@ from fink_utils.photometry.conversion import apparent_flux
 from fink_utils.photometry.utils import is_source_behind
 from FAnomAly.flux import flux_nr
 from FAnomAly.flux import apparent_flux_Upper
+from FAnomAly.flux import apparent_flux_New
 from FAnomAly.dc_mag import dc_mag
 from FAnomAly.Weighted_Mean import Weighted_Mean_general
 from FAnomAly.Weighted_Mean import Weighted_Mean_all
@@ -34,68 +35,25 @@ def function_FN(Id, first_day, last_day):
 
     maskValid = (df['rb'] > 0.55) & (df['nbad'] == 0)
     df_valid = df[maskValid].sort_values('jd')
-
-    """isSource = is_source_behind(df_valid['distnr'].values[0])
-
-    if isSource:
-      #print('It looks like there is a source behind. Lets compute the DC magnitude instead.')
     
-      mag_dc, err_dc = np.transpose(
-        [
-            dc_mag(*args) for args in zip(
-                df_valid['magpsf'].astype(float).values,
-                df_valid['sigmapsf'].astype(float).values,
-                df_valid['magnr'].astype(float).values,
-                df_valid['sigmagnr'].astype(float).values,
-                df_valid['isdiffpos'].values
-            )
-        ]
-    )
     
-      df_valid['mag_dc'] = mag_dc
-      df_valid['err_dc'] = err_dc
-    else:
-      #print('No source found -- keeping PSF fit magnitude')
-      df_valid['mag_dc'] = df_valid['magpsf']
-      df_valid['err_dc'] = df_valid['sigmapsf']"""
-      
     df_valid['is_Source'] = is_source_behind(df_valid['distnr'])
-      
-    mag_dc, err_dc = np.transpose(
-        [
-            dc_mag(*args) for args in zip(
-                df_valid['magpsf'].astype(float).values,
-                df_valid['sigmapsf'].astype(float).values,
-                df_valid['magnr'].astype(float).values,
-                df_valid['sigmagnr'].astype(float).values,
-                df_valid['isdiffpos'].values,
-                df_valid['is_Source'].astype(bool).values
-
-            )
-        ]
-     )
-    
-    df_valid['mag_dc'] = mag_dc
-    df_valid['i:err_dc'] = err_dc
-
-
-
-    ref_value_r = np.sqrt((df_valid[df_valid['fid'] == 2]['magnr'] ** 2).mean())# Quadratic Mean
-    ref_value_g = np.sqrt((df_valid[df_valid['fid'] == 1]['magnr'] ** 2).mean())
 
 
     dc_flux, dc_sigflux = np.transpose(
-        [
-            apparent_flux(*args, jansky=True) for args in zip(
-                df_valid['magpsf'].astype(float).values,
-                df_valid['sigmapsf'].astype(float).values,
-                df_valid['magnr'].astype(float).values,
-                df_valid['sigmagnr'].astype(float).values,
-                df_valid['isdiffpos'].values
-            )
-        ]
-)
-
+            [
+                apparent_flux_New(*args, jansky=True) for args in zip(
+                    df_valid['magpsf'].astype(float).values,
+                    df_valid['sigmapsf'].astype(float).values,
+                    df_valid['magnr'].astype(float).values,
+                    df_valid['sigmagnr'].astype(float).values,
+                    df_valid['isdiffpos'].values,
+                    df_valid['is_Source'].astype(bool).values
+    
+                )
+            ]
+    )
+    
     df_valid['dc_flux'] = dc_flux
     df_valid['dc_sigflux'] = dc_sigflux
 
@@ -113,6 +71,8 @@ def function_FN(Id, first_day, last_day):
     df_valid['nr_flux'] = nr_flux
     df_valid['nr_sigflux'] = nr_sigflux
 
+      
+    
 
 
     maskUpper = pd.isna(df['magpsf'])
@@ -121,6 +81,12 @@ def function_FN(Id, first_day, last_day):
 
 
     columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux', 'source']
+
+    is_Source_by_fid = df_valid.groupby(['fid', 'is_Source']).size().unstack(fill_value=0).sort_index()
+
+    # # Determine which count is highest
+    is_Source_by_fid['Highest_bool'] = is_Source_by_fid.idxmax(axis=1)
+    
 
     df_valid['source'] = 1
     if len(df_valid[df_valid['fid'] == 1]) ==0 :
@@ -132,7 +98,9 @@ def function_FN(Id, first_day, last_day):
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
                              'nr_sigflux':[0,0],
-                             'source' : [0,0]
+                             'source' : [0,0],
+                             'is_Source': [is_Source_by_fid['Highest_bool'].iloc[0],is_Source_by_fid['Highest_bool'].iloc[0]]
+
                             })
 
          df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
@@ -147,18 +115,46 @@ def function_FN(Id, first_day, last_day):
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
                              'nr_sigflux':[0,0],
-                             'source' : [0,0]
+                             'source' : [0,0],
+                             'is_Source': [is_Source_by_fid['Highest_bool'].iloc[0],is_Source_by_fid['Highest_bool'].iloc[0]]
 
                            })
 
           df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
+          
+
 
     there_upper = (len(df_Upper)>0)
 
     if there_upper :
+        is_Source_by_fid = df_valid.groupby(['fid', 'is_Source']).size().unstack(fill_value=0).sort_index()
+        
+        # Determine which count is highest
+        is_Source_by_fid['Highest_bool'] = is_Source_by_fid.idxmax(axis=1)
+        
+        
         df_Upper['source'] = 1
-
+        
+        
+        if is_Source_by_fid['Highest_bool'].iloc[0]: 
+            ref_value_g = np.sqrt((df_valid[df_valid['fid'] == 1]['magnr'] ** 2).mean())
+            mean_sigmnr_g = np.sqrt((df_valid[df_valid['fid'] == 1]['sigmagnr'] ** 2).mean())
+        else:
+            ref_value_g = np.inf
+            mean_sigmnr_g = 0
+    
+            
+        if is_Source_by_fid['Highest_bool'].iloc[1]: 
+            ref_value_r = np.sqrt((df_valid[df_valid['fid'] == 2]['magnr'] ** 2).mean())# Quadratic Mean
+            mean_sigmnr_r = np.sqrt((df_valid[df_valid['fid'] == 2]['sigmagnr'] ** 2).mean())
+        else:
+            ref_value_r = np.inf
+            mean_sigmnr_r = 0
+                
+        
   
+
+
         mean_sigmnr_g = np.sqrt((df_valid[df_valid['fid'] == 1]['sigmagnr'] ** 2).mean())
         mean_sigmnr_r = np.sqrt((df_valid[df_valid['fid'] == 2]['sigmagnr'] ** 2).mean())
     
@@ -281,7 +277,8 @@ def main():
     results2=[]
     
 
-    for Id in unique_ids[:100]:
+    for Id in unique_ids:#[:10]:
+       #print(Id)
 
        Anomaly, df_anm = function_FN(Id,first_day,last_day)
  
@@ -292,7 +289,7 @@ def main():
     df_anomaly2 = pd.concat(results2, ignore_index=True)
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
-    df_merged.to_parquet('df_merged2.parquet', compression='gzip')
+    df_merged.to_parquet('df_after_bug.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time
