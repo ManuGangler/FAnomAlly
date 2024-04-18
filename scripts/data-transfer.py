@@ -78,22 +78,40 @@ def function_FN(Id, first_day, last_day):
     maskUpper = pd.isna(df['magpsf'])
 
     df_Upper = df[maskUpper].sort_values('jd')
+    
+    
+    
+    df_valid['mjd'] = (df_valid['jd'] - 2400000.5).astype(int)
+    df_Upper['mjd'] = (df_Upper['jd'] - 2400000.5).astype(int)
+    
+    fid = 2
+    for filt in np.unique(df['fid']):
+        df_fid = df_valid[df_valid['fid'] == fid]
+     
+        for index, row in df_Upper[df_Upper['fid'] == fid][['mjd']].iterrows():
+              if len(df_fid[df_fid['mjd'] == row['mjd']]) > 0 :
+                   df_Upper.drop(index, inplace=True)
+        
+    
 
 
-    columns_to_keep = ['jd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux', 'source']
+    columns_to_keep = ['mjd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux', 'source','is_valid']
 
     is_Source_by_fid = df_valid.groupby(['fid', 'is_Source']).size().unstack(fill_value=0).sort_index()
 
     # # Determine which count is highest
     is_Source_by_fid['Highest_bool'] = is_Source_by_fid.idxmax(axis=1)
+    min_mjd = int(first_day - 2400000.5) #df_by_days['mjd'].min()
+    max_mjd = int(last_day  - 2400000.5)
     
 
     df_valid['source'] = 1
+ 
     if len(df_valid[df_valid['fid'] == 1]) ==0 :
          df_Upper.drop(df_Upper[df_Upper['fid'] == 1].index, inplace=True)
     
          new_rows = pd.DataFrame({'fid': [1, 1],
-                             'jd': [first_day, last_day],
+                             'mjd': [min_mjd, max_mjd],
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
@@ -110,7 +128,7 @@ def function_FN(Id, first_day, last_day):
     
         
           new_rows = pd.DataFrame({'fid': [2, 2],
-                             'jd': [first_day, last_day],
+                             'mjd': [min_mjd, max_mjd],
                              'dc_flux': [0, 0],
                              'dc_sigflux': [0, 0],
                              'nr_flux' : [0,0],
@@ -125,8 +143,12 @@ def function_FN(Id, first_day, last_day):
 
 
     there_upper = (len(df_Upper)>0)
-
+    
+    df_valid['is_valid'] = True
+   
     if there_upper :
+        df_Upper['is_valid'] = False
+
         is_Source_by_fid = df_valid.groupby(['fid', 'is_Source']).size().unstack(fill_value=0).sort_index()
         
         # Determine which count is highest
@@ -187,7 +209,6 @@ def function_FN(Id, first_day, last_day):
 
 
     combined_df.sort_index(inplace=True)
-    combined_df['mjd'] = (combined_df['jd'] - 2400000.5).astype(int)
 
 
     df_group = combined_df.groupby(['mjd','fid'])
@@ -204,12 +225,9 @@ def function_FN(Id, first_day, last_day):
     df_by_days[['nr_flux', 'nr_sigflux']] = df_group.apply(Weighted_Mean_general, flux_col='nr_flux',sigflux_col='nr_sigflux')
 
     df_by_days['source'] = df_group.apply(lambda group: group['source'].iloc[0])
-
+    df_by_days['is_valid'] = df_group.apply(lambda group: group['is_valid'].iloc[0])
     df_by_days.reset_index(inplace=True)
 
-    min_mjd = int(first_day - 2400000.5) #df_by_days['mjd'].min()
-    max_mjd = int(last_day  - 2400000.5)
-    
     
     all_days = pd.DataFrame({'mjd': range(min_mjd, max_mjd + 1)})
 
@@ -289,7 +307,7 @@ def main():
     df_anomaly2 = pd.concat(results2, ignore_index=True)
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
-    df_merged.to_parquet('df_after_bug.parquet', compression='gzip')
+    df_merged.to_parquet('df_after_upper_vs_valid.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time
