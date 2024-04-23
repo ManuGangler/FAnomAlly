@@ -14,6 +14,25 @@ from FAnomAly.Weighted_Mean import Weighted_Mean_general
 from FAnomAly.Weighted_Mean import Weighted_Mean_all
 import time
 
+    
+def get_interval(target_mjd,fid, min_mjd, max_mjd,df_valid):
+    lower_bound = min_mjd
+    upper_bound = max_mjd
+#     print(lower_bound,upper_bound )
+    for index, row in df_valid[df_valid['fid'] == fid].iterrows():
+        if row['mjd'] < target_mjd:
+            lower_bound = row['mjd']
+        else:
+            upper_bound = row['mjd']
+            break
+    return lower_bound,upper_bound 
+
+def get_pos_neg(x,magpsf, magnr): # change the name ! 
+    #A = 2 ## here for pos flux, =1/2 for neg 
+    if (x == 't') or (x == '1'):
+        return magpsf < (magnr+0)
+    # maskneg = (df['isdiffpos'] == 'f') | (df['isdiffpos'] == '0')
+    return magpsf > (magnr+2.5*np.log10(2))
 
 def function_FN(Id, first_day, last_day):    
     pdf_filter_by_shared_Id = pdf.loc[pdf['objectId'] == Id]
@@ -83,16 +102,7 @@ def function_FN(Id, first_day, last_day):
     
     df_valid['mjd'] = (df_valid['jd'] - 2400000.5).astype(int)
     df_Upper['mjd'] = (df_Upper['jd'] - 2400000.5).astype(int)
-    
-    fid = 2
-    for filt in np.unique(df['fid']):
-        df_fid = df_valid[df_valid['fid'] == fid]
-     
-        for index, row in df_Upper[df_Upper['fid'] == fid][['mjd']].iterrows():
-              if len(df_fid[df_fid['mjd'] == row['mjd']]) > 0 :
-                   df_Upper.drop(index, inplace=True)
-        
-    
+
 
 
     columns_to_keep = ['mjd', 'fid','dc_flux', 'dc_sigflux', 'nr_flux', 'nr_sigflux', 'source','is_valid']
@@ -140,8 +150,62 @@ def function_FN(Id, first_day, last_day):
 
           df_valid = pd.concat([df_valid, new_rows], ignore_index=True)
           
+    
+            
+    for filt in np.unique(df_valid['fid']):
+        df_fid = df_valid[df_valid['fid'] == filt]
+        min_mjd2 = df_fid['mjd'].min()
+        max_mjd2 = df_fid['mjd'].max()
+    
+        
+        for index, row in df_Upper[df_Upper['fid'] == filt][['mjd']].iterrows():
+            # If valid data and an upper limit are both present in a given day, 
+            # we only consider the valid data, (we drope upperlim)
+            if len(df_fid[df_fid['mjd'] == row['mjd']]) > 0 :
+                df_Upper.drop(index, inplace=True)
 
-
+            
+            elif row['mjd'] < min_mjd2 : #or row['mjd'] > max_mjd: 
+                 df_min = df_fid[(df_fid['mjd'] == min_mjd2)]
+                 idx = df_min['magpsf'].idxmax()
+                 x = df_min['isdiffpos'].loc[idx]
+                 magpsf_down, magnr_down = df_min[['magpsf','magnr']].loc[idx]
+                 if get_pos_neg(x,magpsf_down, magnr_down): 
+                     df_Upper.drop(index, inplace=True)
+    
+            elif row['mjd'] > max_mjd2 : #or row['mjd'] > max_mjd: 
+                 df_max = df_fid[(df_fid['mjd'] == max_mjd2)]
+                 idx = df_max['magpsf'].idxmax()
+                 x = df_max['isdiffpos'].loc[idx]
+                 magpsf_up, magnr_up = df_max[['magpsf','magnr']].loc[idx]
+                 if get_pos_neg(x,magpsf_up, magnr_up): 
+                     df_Upper.drop(index, inplace=True)
+    
+    
+            else:
+                lower_bound,upper_bound = get_interval(row['mjd'],filt, min_mjd2, max_mjd2, df_valid)
+                # print(filt, row['mjd'], lower_bound, upper_bound)
+                      
+                df_down = df_fid[(df_fid['mjd'] == lower_bound)]
+                idx_down = df_down['magpsf'].idxmax()
+                x_down = df_down['isdiffpos'].loc[idx_down]
+                magnr_down, magpsf_down = df_down[['magnr','magpsf']].loc[idx_down]
+    
+    
+                df_up = df_fid[(df_fid['mjd'] == upper_bound)]
+                idx_up = df_up['magpsf'].idxmax()
+                x_up = df_up['isdiffpos'].loc[idx_up]
+                magnr_up, magpsf_up = df_up[['magnr','magpsf']].loc[idx_up]
+                
+                
+                #print(filt, row['mjd'], lower_bound, upper_bound, magpsf_down, magpsf_up, magnr_down, magnr_up)
+                if get_pos_neg(x_down, magpsf_down, magnr_down) and get_pos_neg(x_up, magpsf_up, magnr_up):
+                    #print("A>1")
+                    df_Upper.drop(index, inplace=True)
+    
+    
+                        
+    
     there_upper = (len(df_Upper)>0)
     
     df_valid['is_valid'] = True
@@ -295,7 +359,7 @@ def main():
     results2=[]
     
 
-    for Id in unique_ids:#[:10]:
+    for Id in unique_ids[:100]:
        #print(Id)
 
        Anomaly, df_anm = function_FN(Id,first_day,last_day)
@@ -307,7 +371,8 @@ def main():
     df_anomaly2 = pd.concat(results2, ignore_index=True)
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
-    df_merged.to_parquet('df_after_upper_vs_valid.parquet', compression='gzip')
+
+    df_merged.to_parquet('df_after_upper_conds.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time
