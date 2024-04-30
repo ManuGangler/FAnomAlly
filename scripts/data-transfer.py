@@ -32,7 +32,7 @@ def get_pos_neg(x,magpsf, magnr): # change the name !
     if (x == 't') or (x == '1'):
         return magpsf < (magnr+0)
     # maskneg = (df['isdiffpos'] == 'f') | (df['isdiffpos'] == '0')
-    return magpsf > (magnr+2.5*np.log10(2))
+    return magpsf < (magnr+2.5*np.log10(2))
 
 def function_FN(Id, first_day, last_day):    
     pdf_filter_by_shared_Id = pdf.loc[pdf['objectId'] == Id]
@@ -334,8 +334,8 @@ def function_FN(Id, first_day, last_day):
 
 
 def main():    
-    #global pdf
-    #pdf = pd.read_parquet('../../ftransfer_ztf_2024-02-01_689626')
+    global pdf
+    pdf = pd.read_parquet('../../ftransfer_ztf_2024-02-01_689626')
     
     jd_series = pdf.candidate.apply(pd.Series)['jd']
 
@@ -359,7 +359,7 @@ def main():
     results2=[]
     
 
-    for Id in unique_ids[:100]:
+    for Id in unique_ids:#[:100]:
        #print(Id)
 
        Anomaly, df_anm = function_FN(Id,first_day,last_day)
@@ -372,7 +372,7 @@ def main():
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
 
-    df_merged.to_parquet('df_after_upper_conds.parquet', compression='gzip')
+    df_merged.to_parquet('df_after_upper_conds_2.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time
