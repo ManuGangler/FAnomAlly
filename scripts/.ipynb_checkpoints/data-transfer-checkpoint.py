@@ -349,14 +349,7 @@ def main():
     
 
     unique_ids = pdf['objectId'].unique().tolist()
-    
-    
-    with open("Classifications_arch/unique_ids.txt", 'w') as file: # you only need to do that once
-        # Write each unique ID to a separate line
-        for id in unique_ids:
-          file.write(f"{id}\n")
-          
-          
+
     start_time = time.time()
 
     df_anomaly = pd.DataFrame(columns=['objectId', 'candid', 'jd'])
@@ -366,7 +359,7 @@ def main():
     results2=[]
     
 
-    for Id in unique_ids[:100]:
+    for Id in unique_ids:#[:100]:
        #print(Id)
 
        Anomaly, df_anm = function_FN(Id,first_day,last_day)
@@ -379,11 +372,7 @@ def main():
     df_merged = pd.merge(df_anomaly, df_anomaly2, on='objectId', how='inner')
 
 
-    df_merged.to_parquet('df_after_upper_conds_2_test.parquet', compression='gzip')
-    
-    unique_ids = df_merged['objectId'].unique().tolist()
-    
-
+    df_merged.to_parquet('df_after_upper_conds_2.parquet', compression='gzip')
 
     end_time = time.time()
     elapsed_time = end_time - start_time

@@ -219,8 +219,7 @@ def function_FN(Id, first_day, last_day):
     all_days = pd.DataFrame({'mjd': range(min_mjd, max_mjd + 1)})
 
     df_extended = df_by_days
-    #df_extended['source'] = 1
-    ########################################### We don't really need all these lines, we can simplify them
+
     there_missing_data = (df_by_days.shape[0] < (max_mjd -min_mjd + 1)*2)
     if there_missing_data:
      for filt in np.unique(df_extended['fid']):
@@ -250,7 +249,6 @@ def function_FN(Id, first_day, last_day):
     df_extended['objectId'] = Id 
 
 
-    #df_extended.sort_values(by=['mjd','fid'],   inplace=True)
     df_extended.reset_index(drop= True, inplace=True)
         
     return pdf_last_alert, df_extended
