@@ -1,7 +1,7 @@
 # FAnomAlly
 Looking for Anomalies in Fink data ....
 
-To get started, make sure to run the `setup.py` file to set up the necessary functions. You'll also need to download the `fink_utils` package.
+To get started, make sure to run the `setup.py` (python setup.py install) file to set up the necessary functions. You'll also need to download the `fink_utils` package.
 
 Next, download the Fink data from: [Fink Portal](https://fink-portal.org/download). You can see an example with the data we used in our work here: [Example Data](https://drive.google.com/file/d/1VtJJIQdzevkUALEWU2fzrBzWVYPfeZmR/view?usp=sharing) (data1).
 
