@@ -11,6 +11,7 @@ After that, you can perform data transfer or data reduction and feature extracti
 
 Simultaneously, go to `scripts/classification_functs/Run_jobs_th.py` and run the Python file. This step may take a significant amount of time, but it only needs to be done once after you download your data. It saves the classification of objects in the `Classifications_arch` folder so you don't have to call the server every time you want to see the classification.
 
+#### If you are working with (data1), you can find the `Classifications_arch` folder here: [Google Drive link](https://drive.google.com/file/d/1ifZHsdar8qaMG-qt3yCiCw0rc6WjAxlT/view?usp=drive_link).
 
 Now, we start the analysis. We have two different files: one with optimization (`retrieve_data-exclud_matches.ipynb`) and one without optimization (`retrieve_data.ipynb`).
 
